@@ -2,9 +2,8 @@ XYZ Gym Database Project
 ==========================
 
 Project Overview:
-This project involves creating and implementing a database for XYZ Gym using SQLite3. 
-The project includes crtdb.sql, insdb.sql, and XYZGym.sqlite Schemas_Final.pdf. 
-The work allocation among team members is documented below.
+This project stage connects our XYZGym.sqlite database and executes 10 different 
+queries based onthe command-line arguments and prints the results.
 
 Team Members & Work Allocation:
 --------------------------------
@@ -16,17 +15,10 @@ Team Members & Work Allocation:
 
 2. **Adan Delgado**
    - **Contributions:** 
-     - Built databse tables
-     - Added some data
-     - Reviewed other's contributions
+     - Set up python file
+     - Wrote queries 1-6
+     - Tested all queries
 
-3. **Elijah (Eli) Ray**
-   - **Contributions:** 
-     - Finalized GitHub Files
-     - Finalized data insertion
-     - Reviewed other's contributions
-
-GitHub Repository:
 ------------------
 
 Notes:
