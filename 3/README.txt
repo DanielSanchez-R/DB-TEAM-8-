@@ -16,7 +16,7 @@ Team Members & Work Allocation:
 2. **Adan Delgado**
    - **Contributions:** 
      - Set up python file
-     - Wrote queries 1-6
+     - Wrote queries 1-10
      - Tested all queries
 
 ------------------
