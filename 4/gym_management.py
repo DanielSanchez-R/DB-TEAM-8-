@@ -7,6 +7,7 @@ Description: manages members, classes, and equipment for a gym
 It connects to a SQLite database and allows CRUD operations through
 a menu-driven interface using an object-oriented design.
 """
+import datetime
 import sqlite3
 from datetime import date
 
@@ -85,8 +86,25 @@ class MemberManager:
             name = input("Enter member name: ")
             email = input("Enter email: ")
             age = int(input("Enter age: "))
+            
+            # Validate age
+            if age < 15:
+                print("[ERROR] Age must be at least 15.")
+                return
+            
             membership_start_date = input("Enter membership start date (YYYY-MM-DD): ")
             membership_end_date = input("Enter membership end date (YYYY-MM-DD): ")
+            
+            # Validate dates
+            try:
+                start = datetime.strptime(membership_start_date, "%Y-%m-%d")
+                end = datetime.strptime(membership_end_date, "%Y-%m-%d")
+                if end < start:
+                    print("[ERROR] Membership end date cannot be before start date.")
+                    return
+            except ValueError:
+                print("[ERROR] Dates must be in YYYY-MM-DD format.")
+                return
             
             # Choose plan type
             print("Choose a Membership Plan:")
@@ -137,43 +155,68 @@ class MemberManager:
         """
        Updates an existing member's email and age information.
        """
+        cursor = self.conn.cursor()
+    
+        # FIRST: Show list of members
+        cursor.execute("""
+            SELECT m.memberId, m.name, m.email, m.age, IFNULL(mp.planType, 'No Plan')
+            FROM Member m
+            LEFT JOIN Payment p ON m.memberId = p.memberId
+            LEFT JOIN MembershipPlan mp ON p.planId = mp.planId;
+        """)
+        members = cursor.fetchall()
+    
+        if not members:
+            print("No members found to update.")
+            return
+    
+        print("\nAvailable Members:")
+        print("Member ID | Member Name | Email | Age | Membership Plan")
+        print("----------------------------------------------------------")
+        for member in members:
+            print(f"{member[0]} | {member[1]} | {member[2]} | {member[3]} | {member[4]}")
+    
+        # THEN: Ask for Member ID
+        member_id = int(input("\nEnter the ID of the member to update: "))
+        new_email = input("Enter new email: ")
+        new_age = int(input("Enter new age: "))
+    
+        # Validate age
+        if new_age < 15:
+            print("[ERROR] Age must be at least 15.")
+            return
+    
+        # --- NEW: prompt for additional member fields ---
+        new_phone = input("Enter new phone number: ")  # <--- Added
+        new_address = input("Enter new address: ")     # <--- Added
+        # Prompt for membership dates
+        new_start = input("Enter new membership start date (YYYY-MM-DD): ")  # <--- Added
+        new_end   = input("Enter new membership end date (YYYY-MM-DD): ")    # <--- Added
+
+        # --- NEW: date validation ---
         try:
-            cursor = self.conn.cursor()
-    
-            # FIRST: Show list of members
-            cursor.execute("""
-                SELECT m.memberId, m.name, m.email, m.age, IFNULL(mp.planType, 'No Plan')
-                FROM Member m
-                LEFT JOIN Payment p ON m.memberId = p.memberId
-                LEFT JOIN MembershipPlan mp ON p.planId = mp.planId;
-            """)
-            members = cursor.fetchall()
-    
-            if not members:
-                print("No members found to update.")
+            fmt = "%Y-%m-%d"
+            from datetime import datetime
+            start_dt = datetime.strptime(new_start, fmt)
+            end_dt = datetime.strptime(new_end, fmt)
+            if end_dt < start_dt:
+                print("[ERROR] End date cannot be before start date.")
                 return
-    
-            print("\nAvailable Members:")
-            print("Member ID | Member Name | Email | Age | Membership Plan")
-            print("----------------------------------------------------------")
-            for member in members:
-                print(f"{member[0]} | {member[1]} | {member[2]} | {member[3]} | {member[4]}")
-    
-            # THEN: Ask for Member ID
-            member_id = int(input("\nEnter the ID of the member to update: "))
-            new_email = input("Enter new email: ")
-            new_age = int(input("Enter new age: "))
-    
-            cursor.execute("""
-                UPDATE Member
-                SET email = ?, age = ?
-                WHERE memberId = ?
-            """, (new_email, new_age, member_id))
-            self.conn.commit()
-            print("[INFO] Member updated successfully.")
-    
-        except sqlite3.Error as e:
-            print(f"[ERROR] Failed to update member: {e}")
+        except ValueError:
+            print("[ERROR] Dates must be in YYYY-MM-DD format.")
+            return
+
+        # --- UPDATED SQL: include all fields ---
+        cursor.execute(
+            """
+            UPDATE Member
+            SET email = ?, age = ?, phone = ?, address = ?, membershipStartDate = ?, membershipEndDate = ?
+            WHERE memberId = ?
+            """,
+            (new_email, new_age, new_phone, new_address, new_start, new_end, member_id)
+        )
+        self.conn.commit()
+        print(f"[INFO] Member {member_id} updated successfully.")
 
     def delete_member(self):
         """
@@ -333,44 +376,47 @@ class ClassManager:
         """
         Updates the name and type of an existing class.
         """
-        try:
-            cursor = self.conn.cursor()
+        cursor = self.conn.cursor()
     
-            # FIRST: Show list of classes
-            cursor.execute("""
-                SELECT classId, className, classType
-                FROM Class;
-            """)
-            classes = cursor.fetchall()
-    
-            if not classes:
-                print("No classes found to update.")
-                return
-    
-            print("\nAvailable Classes:")
-            print("Class ID | Class Name | Class Type")
-            print("-----------------------------------")
-            for cl in classes:
-                print(f"{cl[0]} | {cl[1]} | {cl[2]}")
-    
-            # THEN: Ask user for class ID
-            class_id = int(input("\nEnter class ID to update: "))
-            new_name = input("Enter new class name: ")
-    
-            print("\nAvailable Class Types: Yoga, Zumba, HIIT, Weights")
-            new_type = input("Enter new class type (exactly as shown): ")
-            
-            cursor.execute("""
-                UPDATE Class
-                SET className = ?, classType = ?
-                WHERE classId = ?
-            """, (new_name, new_type, class_id))
-            self.conn.commit()
-            print("[INFO] Class updated successfully.")
-    
-        except sqlite3.Error as e:
-            print(f"[ERROR] Failed to update class: {e}")
+        # FIRST: Show list of classes
+        cursor.execute("""
+            SELECT classId, className, classType
+            FROM Class;
+        """)
+        classes = cursor.fetchall()
 
+        if not classes:
+            print("No classes found to update.")
+            return
+
+        print("\nAvailable Classes:")
+        print("Class ID | Class Name | Class Type")
+        print("-----------------------------------")
+        for cl in classes:
+            print(f"{cl[0]} | {cl[1]} | {cl[2]}")
+
+        # Ask for Class ID
+        class_id = int(input("\nEnter class ID to update: "))
+
+        # --- existing prompts ---
+        new_name = input("Enter new class name: ")           # <--- Added
+        new_type = input("Enter new class type: ")           # <--- Added
+        new_duration = input("Enter new duration (minutes): ")# <--- Added
+        new_capacity = input("Enter new capacity: ")          # <--- Added
+        new_instructor = int(input("Enter new instructor ID: "))  # <--- Added
+
+        # --- UPDATED SQL: include all fields ---
+        cursor.execute(
+            """
+            UPDATE Class
+            SET className = ?, classType = ?, duration = ?, classCapacity = ?, instructorId = ?
+            WHERE classId = ?
+            """,
+            (new_name, new_type, new_duration, new_capacity, new_instructor, class_id)
+        )
+        self.conn.commit()
+        print(f"[INFO] Class {class_id} updated successfully.")
+        
     def delete_class(self):
         """
         Deletes a class if there are no attendees registered.
@@ -414,15 +460,50 @@ class ClassManager:
             cursor.execute("SELECT COUNT(*) FROM Attends WHERE classId = ?", (class_id,))
             attendees = cursor.fetchone()[0]
             if attendees > 0:
-                print("[WARNING] This class has members registered!")
-                print("[INFO] Please move members to another class before deleting.")
+                print(f"[WARNING] Class '{result[0]}' has {attendees} registered member(s).")
+                move_choice = input("Would you like to reassign them to another class? (Y/N): ").strip().lower()
+                if move_choice != 'y':
+                    print("Deletion cancelled.")
+                    return
+
+                # Show other classes for reassignment
+                cursor.execute("""
+                    SELECT classId, className
+                    FROM Class
+                    WHERE classId != ?;
+                """, (class_id,))
+                other_classes = cursor.fetchall()
+                print("\nAvailable Classes to Move To:")
+                print("Class ID | Class Name")
+                print("---------------------")
+                for oc in other_classes:
+                    print(f"{oc[0]} | {oc[1]}")
+
+                new_class_id = int(input("Enter new class ID to reassign members to: "))
+                valid_ids = [c[0] for c in other_classes]
+                if new_class_id not in valid_ids:
+                    print("[ERROR] Invalid class ID chosen. Deletion cancelled.")
+                    return
+
+                # Reassign members
+                cursor.execute(
+                    "UPDATE Attends SET classId = ? WHERE classId = ?",
+                    (new_class_id, class_id)
+                )
+                self.conn.commit()
+                print(f"[INFO] Moved {attendees} member(s) to class ID {new_class_id}.")
+
+            # Confirm deletion
+            confirm = input(f"Are you sure you want to delete class '{result[0]}'? (Y/N): ").strip().lower()
+            if confirm != 'y':
+                print("Deletion cancelled.")
                 return
-    
+
             # Delete Class
             cursor.execute("DELETE FROM Class WHERE classId = ?", (class_id,))
             self.conn.commit()
             print("[INFO] Class deleted successfully.")
-    
+
         except sqlite3.Error as e:
             print(f"[ERROR] Failed to delete class: {e}")
 
@@ -485,39 +566,44 @@ class EquipmentManager:
         """
         Updates the quantity of an existing equipment item.
         """
-        try:
-            cursor = self.conn.cursor()
+        cursor = self.conn.cursor()
     
-            # FIRST: Show list of equipment
-            cursor.execute("""
-                SELECT equipmentId, name, type, quantity
-                FROM Equipment;
-            """)
-            equipment_list = cursor.fetchall()
-    
-            if not equipment_list:
-                print("No equipment found to update.")
-                return
-    
-            print("\nAvailable Equipment:")
-            print("Equipment ID | Name | Type | Quantity")
-            print("---------------------------------------")
-            for eq in equipment_list:
-                print(f"{eq[0]} | {eq[1]} | {eq[2]} | {eq[3]}")
-    
-            equipment_id = int(input("\nEnter equipment ID to update: "))
-            new_quantity = int(input("Enter new quantity: "))
-    
-            cursor.execute("""
-                UPDATE Equipment
-                SET quantity = ?
-                WHERE equipmentId = ?
-            """, (new_quantity, equipment_id))
-            self.conn.commit()
-            print("[INFO] Equipment updated successfully.")
-    
-        except sqlite3.Error as e:
-            print(f"[ERROR] Failed to update equipment: {e}")
+        # FIRST: Show list of equipment
+        cursor.execute("""
+            SELECT equipmentId, name, type
+            FROM Equipment;
+        """)
+        equipment = cursor.fetchall()
+
+        if not equipment:
+            print("No equipment found to update.")
+            return
+
+        print("\nAvailable Equipment:")
+        print("Equip ID | Name | Type")
+        print("----------------------")
+        for eq in equipment:
+            print(f"{eq[0]} | {eq[1]} | {eq[2]}")
+
+        equip_id = int(input("Enter equipment ID to update: "))
+
+        # --- NEW: prompt for fields except gymId ---
+        new_name = input("Enter new equipment name: ")        # <--- Added
+        new_type = input("Enter new equipment type: ")        # <--- Added
+        new_quantity = int(input("Enter new quantity: "))    # <--- Added
+
+        # --- UPDATED SQL: include only name, type, quantity ---
+        cursor.execute(
+            """
+            UPDATE Equipment
+            SET name = ?, type = ?, quantity = ?
+            WHERE equipmentId = ?
+            """,
+            (new_name, new_type, new_quantity, equip_id)
+        )
+        self.conn.commit()
+        print(f"[INFO] Equipment {equip_id} updated successfully.")
+
 
     def delete_equipment(self):
         """
