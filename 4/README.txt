@@ -13,6 +13,7 @@ Team Members & Work Allocation:
      - Added CRUD operations
      - Designed commandline interface
      - Added Execution.pdf
+     - Tested CRUD operations
 
 2. **Adan Delgado**
    - **Contributions:** 
