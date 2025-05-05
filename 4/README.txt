@@ -12,6 +12,7 @@ Team Members & Work Allocation:
      - Built python file
      - Added CRUD operations
      - Designed commandline interface
+     - Added Execution.pdf
 
 2. **Adan Delgado**
    - **Contributions:** 
