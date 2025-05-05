@@ -8,6 +8,7 @@ It connects to a SQLite database and allows CRUD operations through
 a menu-driven interface using an object-oriented design.
 """
 import datetime
+from datetime import datetime
 import sqlite3
 from datetime import date
 
