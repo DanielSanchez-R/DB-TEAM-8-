@@ -405,24 +405,53 @@ class ClassManager:
                 print("[ERROR] Class ID not found.")
                 return
     
+             # Check if class has attendees
+            cursor.execute("SELECT COUNT(*) FROM Attends WHERE classId = ?", (class_id,))
+            attendees = cursor.fetchone()[0]
+            if attendees > 0:
+                print(f"[WARNING] Class '{result[0]}' has {attendees} registered member(s).")
+                move_choice = input("Would you like to reassign them to another class? (Y/N): ").strip().lower()
+                if move_choice != 'y':
+                    return
+
+            # Show other classes for reassignment
+                cursor.execute("""
+                    SELECT classId, className
+                    FROM Class
+                    WHERE classId != ?;
+                """, (class_id,))
+                other_classes = cursor.fetchall()
+                print("\nAvailable Classes to Move To:")
+                print("Class ID | Class Name")
+                print("---------------------")
+                for oc in other_classes:
+                    print(f"{oc[0]} | {oc[1]}")
+
+                new_class_id = int(input("Enter new class ID to reassign members to: "))
+                valid_ids = [c[0] for c in other_classes]
+                if new_class_id not in valid_ids:
+                    print("[ERROR] Invalid class ID chosen. Deletion cancelled.")
+                    return
+
+                # Reassign members
+                cursor.execute(
+                    "UPDATE Attends SET classId = ? WHERE classId = ?",
+                    (new_class_id, class_id)
+                )
+                self.conn.commit()
+                print(f"[INFO] Moved {attendees} member(s) to class ID {new_class_id}.")
+
+            # Confirm deletion
             confirm = input(f"Are you sure you want to delete class '{result[0]}'? (Y/N): ").strip().lower()
             if confirm != 'y':
                 print("Deletion cancelled.")
                 return
-    
-            # Check if class has attendees
-            cursor.execute("SELECT COUNT(*) FROM Attends WHERE classId = ?", (class_id,))
-            attendees = cursor.fetchone()[0]
-            if attendees > 0:
-                print("[WARNING] This class has members registered!")
-                print("[INFO] Please move members to another class before deleting.")
-                return
-    
+
             # Delete Class
             cursor.execute("DELETE FROM Class WHERE classId = ?", (class_id,))
             self.conn.commit()
             print("[INFO] Class deleted successfully.")
-    
+
         except sqlite3.Error as e:
             print(f"[ERROR] Failed to delete class: {e}")
 
